@@ -37,7 +37,7 @@ PHASE 3: SETTING UP NGROK
    ngrok config add-authtoken YOUR_TOKEN_HERE
    (Replace YOUR_TOKEN_HERE with your actual code).
 
-
+ngrok config add-authtoken 3DGIsSzZ3ENh8o691PHNCZbRUOK
 PHASE 4: RUNNING THE SYSTEM
 ---------------------------
 1. Open Project in Terminal:
@@ -60,3 +60,4 @@ HOW TO ACCESS:
 - FOR STUDENTS: Look at the ngrok window for the "Forwarding" link (https://...). Give this to them.
 - FOR DISPLAY: Go to http://localhost:3000/player.html in Safari. Click the screen once to activate.
 - FOR DASHBOARD: Go to http://localhost:3000. Password is: @school3
+_5yni4DrHRTa53dpLYGbRk
