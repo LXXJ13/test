@@ -1,0 +1,62 @@
+VIDSTREAM MAC SETUP GUIDE (FOR NEW MAC)
+=======================================
+
+PHASE 1: INSTALLING THE TOOLS
+-----------------------------
+1. Open Terminal: Press Command + Space, type 'Terminal', and press Enter.
+2. Install Homebrew: Copy and paste this line and press Enter:
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+   *Note: Type your Mac password if asked (you won't see it as you type) and press Enter.
+   *Note: If it asks to install "Xcode Command Line Tools," say Yes.
+
+3. Finalize Homebrew: After it finishes, look at the bottom of the Terminal for "Next Steps."
+   Copy and paste those 2-3 lines one by one into the Terminal and press Enter.
+
+4. Install Node.js and ngrok: Copy and paste this and press Enter:
+   brew install node ngrok
+
+
+PHASE 2: PREPARING YOUR PROJECT
+-------------------------------
+1. Create a folder named 'VidStream' on your Desktop.
+2. Put these files inside that folder:
+   - server2.js
+   - index_limit.html
+   - dashboard.html
+   - player.html
+   - package.json
+   - videos_meta.json
+3. Create a NEW folder inside 'VidStream' called 'videos' (This is where uploads go).
+
+
+PHASE 3: SETTING UP NGROK
+-------------------------
+1. Go to ngrok.com, log in, and copy your "Authtoken."
+2. In Terminal, type:
+   ngrok config add-authtoken YOUR_TOKEN_HERE
+   (Replace YOUR_TOKEN_HERE with your actual code).
+
+
+PHASE 4: RUNNING THE SYSTEM
+---------------------------
+1. Open Project in Terminal:
+   Type 'cd ' (with a space), then drag your 'VidStream' folder into the Terminal window and press Enter.
+
+2. Install Library:
+   Type 'npm install' and press Enter.
+
+3. Start the Server:
+   Type 'node server2.js' and press Enter.
+   (Keep this window open!)
+
+4. Start ngrok (New Window):
+   Press Command + N to open a new Terminal window.
+   Type 'ngrok http 3000' and press Enter.
+
+
+HOW TO ACCESS:
+--------------
+- FOR STUDENTS: Look at the ngrok window for the "Forwarding" link (https://...). Give this to them.
+- FOR DISPLAY: Go to http://localhost:3000/player.html in Safari. Click the screen once to activate.
+- FOR DASHBOARD: Go to http://localhost:3000. Password is: @school3
