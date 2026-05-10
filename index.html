@@ -491,7 +491,7 @@ function startCamera() {
   function doGetUserMedia() {
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false
+      audio: true
     }).then(function(s) {
       stream = s;
       var preview = document.getElementById("preview");
