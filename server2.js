@@ -13,20 +13,26 @@ const SECRET_TOKEN   = process.env.SECRET_TOKEN   || "sjdhf34Da2";   // ← رم
 const DASHBOARD_PASS = process.env.DASHBOARD_PASS || "@school3"; // ← كلمة سر اللوحة
 // ══════════════════════════════════════════════════════════════
 
-// ── Device‑based upload limit (2 per phone, 24h window) ──────────────────
-const deviceCounts = new Map();
-const UPLOAD_LIMIT_PER_DEVICE = 2;        // maximum uploads per phone
-const UPLOAD_WINDOW_MS       = 86400000;  // 24 hours
+// ── Upload limit: 2 videos per browser fingerprint per 15 minutes ──────────
+const uploadCounts = new Map();
+const RATE_LIMIT   = 2;
+const RATE_WINDOW  = 15 * 60_000; // 15 minutes
 
-function isDeviceLimited(clientId) {
+function checkUploadLimit(browserId) {
+  const key = browserId || "unknown";
   const now = Date.now();
-  let entry = deviceCounts.get(clientId);
+  let entry = uploadCounts.get(key);
   if (!entry || now > entry.resetAt) {
-    entry = { count: 0, resetAt: now + UPLOAD_WINDOW_MS };
-    deviceCounts.set(clientId, entry);
+    entry = { count: 0, resetAt: now + RATE_WINDOW };
+    uploadCounts.set(key, entry);
+  }
+  if (entry.count >= RATE_LIMIT) {
+    const msLeft = entry.resetAt - now;
+    const mins   = Math.ceil(msLeft / 60_000);
+    return { limited: true, msLeft, mins };
   }
   entry.count++;
-  return entry.count > UPLOAD_LIMIT_PER_DEVICE;
+  return { limited: false };
 }
 
 // ── Cookie-based Dashboard Auth (works through ngrok) ─────────────────────
@@ -152,7 +158,7 @@ function loadStatic(name) {
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Sender-Name, X-Mime-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-Sender-Name, X-Mime-Type, X-Browser-ID",
 };
 
 // ── HTTP Server ────────────────────────────────────────────────────────────
@@ -182,35 +188,29 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // POST /upload
   if (req.method === "POST" && url.pathname === "/upload") {
+    // Token check disabled
 
-    // 1. استخراج الاسم من الرابط وفك تشفيره لدعم العربية
+    // 1. استخراج الاسم أولاً لفحص الحد
     const rawSender = url.searchParams.get("name") || req.headers["x-sender-name"] || "مجهول";
     let sender = "مجهول";
-    try {
-      sender = decodeURIComponent(rawSender).slice(0, 40);
-    } catch (e) {
-      sender = rawSender.slice(0, 40);
-    }
-    // Strip HTML-injectable characters
+    try { sender = decodeURIComponent(rawSender).slice(0, 40); } catch (e) { sender = rawSender.slice(0, 40); }
     sender = sender.replace(/[<>"'&]/g, "").trim() || "مجهول";
 
-    // ── Device‑based upload limit ──────────────────────────────────────
-    const clientId = (url.searchParams.get("clientid") || req.headers["x-client-id"] || "").trim();
-
-    if (!clientId) {
-      res.writeHead(400);
-      res.end("معرّف الجهاز مفقود");
+    // ── Upload limit: 2 per browser fingerprint per 15 minutes ────────────
+    const browserId = req.headers["x-browser-id"] || "unknown";
+    const limitResult = checkUploadLimit(browserId);
+    if (limitResult.limited) {
+      const mins = limitResult.mins;
+      res.writeHead(429, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        error: "limit",
+        message: `لقد وصلت للحد، عد بعد ${mins} دقيقة`,
+        msLeft: limitResult.msLeft,
+        mins
+      }));
       return;
     }
-
-    if (isDeviceLimited(clientId)) {
-      res.writeHead(429);
-      res.end("لقد تجاوزت الحد المسموح (مقطعين فقط) — شكراً لمشاركتك!");
-      return;
-    }
-    // ── End device limit ───────────────────────────────────────────────
 
     // 2. تحديد نوع الملف وامتداده
     const mimeType = req.headers["x-mime-type"] || "video/webm";
@@ -247,7 +247,7 @@ const server = http.createServer((req, res) => {
           timestamp: Date.now(), url: `/video/${filename}`
         };
         videos.unshift(meta);
-        if (videos.length > 300) videos = videos.slice(0, 300);  // increased to 300
+        if (videos.length > 100) videos = videos.slice(0, 100);
         saveVideos();
         console.log(`📹 [${sender}] — ${(size / 1024).toFixed(1)} KB`);
         broadcastJSON(dashboardClients, { type: "new_video", video: meta });
