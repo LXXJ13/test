@@ -133,6 +133,44 @@ main{
 .no-cam svg{width:44px;height:44px;opacity:.2}
 .no-cam p{font-size:15px}
 
+/* permission denied overlay */
+.perm-denied{
+  position:absolute;inset:0;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:12px;padding:24px 20px;
+  background:linear-gradient(160deg,#0c1e1e,#081414);
+  text-align:center;
+}
+.pd-icon svg{width:50px;height:50px;stroke:var(--red);opacity:.75}
+.pd-title{font-size:17px;font-weight:700;color:var(--red)}
+.pd-sub{font-size:13px;color:var(--muted2);margin-top:-4px}
+.pd-steps{
+  width:100%;display:flex;flex-direction:column;gap:10px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border2);
+  border-radius:14px;padding:14px 16px;text-align:right;
+}
+.pd-step{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(224,244,244,.7);line-height:1.5}
+.pd-num{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  background:var(--purple3);color:#fff;
+  font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-top:1px;
+}
+.pd-step b{color:var(--purple2);font-weight:600}
+.pd-retry{
+  margin-top:2px;
+  background:linear-gradient(135deg,#1a6e6e,var(--purple),var(--purple3));
+  border:none;border-radius:14px;
+  color:#fff;font-family:'Tajawal',sans-serif;
+  font-size:15px;font-weight:700;
+  padding:11px 30px;cursor:pointer;
+  box-shadow:0 4px 20px rgba(46,155,155,.35);
+  transition:transform .15s,box-shadow .15s;
+}
+.pd-retry:active{transform:scale(.97)}
+
 /* ring */
 .ring-wrap{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -268,12 +306,30 @@ main{
 
   <div class="cam-shell">
     <video id="preview" autoplay muted playsinline></video>
+    <!-- waiting state -->
     <div class="no-cam" id="noCam">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
-        <line x1="3" y1="3" x2="21" y2="21" stroke-width="1.5"/>
       </svg>
-      <p>الكاميرا</p>
+      <p>جارٍ تشغيل الكاميرا…</p>
+    </div>
+
+    <!-- denied state -->
+    <div class="perm-denied" id="permDenied">
+      <div class="pd-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+          <line x1="3" y1="3" x2="21" y2="21" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <p class="pd-title">الكاميرا محجوبة</p>
+      <p class="pd-sub">تم رفض الإذن — اتبع الخطوات:</p>
+      <div class="pd-steps">
+        <div class="pd-step"><span class="pd-num">١</span><span>اضغط على أيقونة القفل 🔒 في شريط العنوان أعلى المتصفح</span></div>
+        <div class="pd-step"><span class="pd-num">٢</span><span>ابحث عن <b>الكاميرا</b> وغيّر الإذن إلى <b>سماح</b></span></div>
+        <div class="pd-step"><span class="pd-num">٣</span><span>أعد تحميل الصفحة</span></div>
+      </div>
+      <button class="pd-retry" onclick="retryCamera()">↺ حاول مجدداً</button>
     </div>
     <div class="ring-wrap" id="ringWrap">
       <div class="ring">
@@ -306,7 +362,7 @@ main{
     <div class="tips-title">كيف يعمل</div>
     <div class="tip"><div class="tip-dot"></div>أدخل اسمك حتى يعرف الجميع من أرسل المقطع</div>
     <div class="tip"><div class="tip-dot"></div>اضغط تسجيل — يتوقف تلقائياً بعد ١٠ ثوانٍ</div>
-    <div class="tip"><div class="tip-dot"></div>يُرسَل المقطع تلقائياً، لديك حد مقطعين فيدبو فقط   </div>
+    <div class="tip"><div class="tip-dot"></div>يُرسَل المقطع تلقائياً، وسيظهر في الشاشة فوراً</div>
     <div class="tip"><div class="tip-dot"></div>ارنا إبداعك </div>
   </div>
 </main>
@@ -317,6 +373,31 @@ main{
 window.addEventListener("load", function() {
   setTimeout(function() { document.getElementById("splash").classList.add("out"); }, 2300);
 });
+
+// ── Browser fingerprint (stable per browser/device) ────────────────────────
+var BROWSER_ID = (function() {
+  var stored = localStorage.getItem("vs_browser_id");
+  if (stored) return stored;
+  // Build from stable browser signals
+  var raw = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + "x" + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || "",
+    navigator.platform || ""
+  ].join("|");
+  // Simple hash (djb2)
+  var hash = 5381;
+  for (var i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) + hash) ^ raw.charCodeAt(i);
+    hash = hash >>> 0; // keep unsigned 32-bit
+  }
+  var id = hash.toString(36);
+  localStorage.setItem("vs_browser_id", id);
+  return id;
+})();
 
 // =========================================================
 // CONFIG — استبدل برابط ngrok الخاص بك
@@ -330,13 +411,6 @@ var UPLOAD_TOKEN = "sjdhf34Da2";
 var VIDEO_BITRATE = 2000000; // 1.5 Mbps — عالية دائماً
 var MAX_DURATION = 10;       // 10 ثوانٍ دائماً
 var CIRCUMFERENCE = 2 * Math.PI * 40;
-
-// ── Unique device identifier (survives name changes) ─────────────────────
-var DEVICE_ID = localStorage.getItem("vidstream_device_id");
-if (!DEVICE_ID) {
-  DEVICE_ID = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
-  localStorage.setItem("vidstream_device_id", DEVICE_ID);
-}
 
 var stream = null;
 var mediaRecorder = null;
@@ -386,26 +460,76 @@ function checkServer() {
 }
 
 // ── Camera ─────────────────────────────────────────────────────────────────
+function showPermDenied() {
+  document.getElementById("noCam").style.display = "none";
+  document.getElementById("permDenied").style.display = "flex";
+}
+function hidePermDenied() {
+  document.getElementById("permDenied").style.display = "none";
+  document.getElementById("noCam").style.display = "flex";
+}
+
+function retryCamera() {
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: "camera" }).then(function(result) {
+      if (result.state === "denied") {
+        showToast("الإذن لا يزال محجوباً — غيّره من إعدادات المتصفح ثم أعد التحميل", "error");
+      } else {
+        hidePermDenied();
+        startCamera();
+      }
+    }).catch(function() { hidePermDenied(); startCamera(); });
+  } else {
+    hidePermDenied();
+    startCamera();
+  }
+}
+
 function startCamera() {
   if (stream) stream.getTracks().forEach(function(t) { t.stop(); });
 
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-    audio: false
-  }).then(function(s) {
-    stream = s;
-    var preview = document.getElementById("preview");
-    preview.srcObject = stream;
-    
-    // تحديث الكلاس بناءً على نوع الكاميرا المستخدمة حالياً
-    preview.className = facingMode; 
-    
-    document.getElementById("noCam").style.display = "none";
-    setStatus("الكاميرا جاهزة");
-  }).catch(function(err) {
-    setStatus("تعذّر الوصول للكاميرا");
-    showToast("لم يُسمح بالوصول للكاميرا", "error");
-  });
+  function doGetUserMedia() {
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    }).then(function(s) {
+      stream = s;
+      var preview = document.getElementById("preview");
+      preview.srcObject = stream;
+      preview.className = facingMode;
+      document.getElementById("noCam").style.display = "none";
+      document.getElementById("permDenied").style.display = "none";
+      setStatus("الكاميرا جاهزة");
+    }).catch(function(err) {
+      var isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
+      if (isDenied) {
+        showPermDenied();
+        setStatus("الإذن مرفوض");
+      } else {
+        setStatus("تعذّر الوصول للكاميرا");
+        showToast("تعذّر تشغيل الكاميرا: " + (err.message || err.name), "error");
+      }
+    });
+  }
+
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: "camera" }).then(function(result) {
+      if (result.state === "denied") {
+        showPermDenied();
+        setStatus("الإذن مرفوض");
+        result.onchange = function() {
+          if (result.state === "granted" || result.state === "prompt") {
+            hidePermDenied();
+            startCamera();
+          }
+        };
+      } else {
+        doGetUserMedia();
+      }
+    }).catch(function() { doGetUserMedia(); });
+  } else {
+    doGetUserMedia();
+  }
 }
 
 function switchCamera() {
@@ -513,7 +637,7 @@ function uploadVideo() {
   retryInfo.classList.remove("show");
 
   var xhr = new XMLHttpRequest();
-  xhr.open("POST", SERVER_URL + "/upload?name=" + encodeURIComponent(currentSender) + "&token=" + UPLOAD_TOKEN + "&clientid=" + encodeURIComponent(DEVICE_ID));
+xhr.open("POST", SERVER_URL + "/upload?name=" + encodeURIComponent(currentSender) + "&token=" + UPLOAD_TOKEN);
   // Encode sender name safely
   try {
     xhr.setRequestHeader("X-Sender-Name", encodeURIComponent(currentSender));
@@ -522,6 +646,7 @@ function uploadVideo() {
   }
   xhr.setRequestHeader("X-Mime-Type", currentMime);
   xhr.setRequestHeader("Content-Type", "application/octet-stream");
+  xhr.setRequestHeader("X-Browser-ID", BROWSER_ID);
 
   // Timeout scales with file size: min 15s, max 120s
   var timeoutMs = Math.max(15000, Math.min(120000, currentBlob.size / 5000));
@@ -547,11 +672,22 @@ function uploadVideo() {
     if (xhr.status === 200) {
       setStatus("تم الإرسال! ✓");
       showToast("✓ تم إرسال المقطع!", "success");
+    } else if (xhr.status === 429) {
+      // Upload limit hit — parse server response
+      var limitData = null;
+      try { limitData = JSON.parse(xhr.responseText); } catch(e) {}
+      var mins = (limitData && limitData.mins) ? limitData.mins : 15;
+      var msLeft = (limitData && limitData.msLeft) ? limitData.msLeft : mins * 60000;
+      setStatus("لقد وصلت للحد");
+      showToast("لقد وصلت للحد، عد بعد " + mins + " دقيقة", "error");
+      // Disable button and show live countdown in status
+      document.getElementById("recordBtn").disabled = true;
+      startLimitCountdown(msLeft);
     } else {
       setStatus("فشل الرفع");
       showToast("فشل الرفع — كود: " + xhr.status, "error");
     }
-    setTimeout(function() { setStatus("الكاميرا جاهزة"); }, 3500);
+    setTimeout(function() { if (!limitActive) setStatus("الكاميرا جاهزة"); }, 3500);
   };
 
   xhr.onerror = xhr.onabort = function() {
@@ -590,8 +726,8 @@ function uploadVideo() {
 
 function resetRecordBtn() {
   var btn = document.getElementById("recordBtn");
-  btn.disabled = false;
   btn.textContent = "⏺ تسجيل ١٠ ث";
+  if (!limitActive) btn.disabled = false;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -618,6 +754,35 @@ window.addEventListener("beforeunload", function(e) {
   }
 });
 
+// ── Upload limit countdown (server-enforced) ───────────────────────────────
+var limitActive = false;
+var limitCountdownTimer = null;
+
+function startLimitCountdown(msLeft) {
+  limitActive = true;
+  clearInterval(limitCountdownTimer);
+  document.getElementById("recordBtn").disabled = true;
+
+  var deadline = Date.now() + msLeft;
+
+  function tick() {
+    var remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      limitActive = false;
+      clearInterval(limitCountdownTimer);
+      document.getElementById("recordBtn").disabled = false;
+      setStatus("الكاميرا جاهزة");
+      showToast("✓ عد بعد 15 دقيقة للتسجيل مجدداً", "success");
+      return;
+    }
+    var mins = Math.floor(remaining / 60000);
+    var secs = Math.floor((remaining % 60000) / 1000);
+    setStatus("لقد وصلت للحد، عد بعد " + String(mins).padStart(2,"0") + ":" + String(secs).padStart(2,"0"));
+  }
+
+  tick();
+  limitCountdownTimer = setInterval(tick, 1000);
+}
+
 </script>
-</body>
 </html>
