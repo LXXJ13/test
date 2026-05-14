@@ -529,8 +529,19 @@ function retryCamera() {
 }
 
 function startCamera() {
-  if (stream) stream.getTracks().forEach(function(t) { t.stop(); });
+  // Stop and release all existing tracks first
+  if (stream) {
+    stream.getTracks().forEach(function(t) { t.stop(); });
+    stream = null;
+    var preview = document.getElementById("preview");
+    preview.srcObject = null;
+  }
 
+  // Small delay lets the OS fully release the camera hardware (critical on mobile)
+  setTimeout(function() { doStartCamera(); }, 150);
+}
+
+function doStartCamera() {
   function doGetUserMedia() {
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -575,38 +586,19 @@ function startCamera() {
   }
 }
 
+// pendingFacingSwitch: queue camera flip requested during recording
+var pendingFacingSwitch = false;
+
 function switchCamera() {
-  facingMode = facingMode === "user" ? "environment" : "user";
-  
   if (isRecording) {
-    // Switch camera without stopping recording — replace video track in place
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false
-    }).then(function(newStream) {
-      var newVideoTrack = newStream.getVideoTracks()[0];
-      if (!newVideoTrack) return;
-      // Replace track in the existing stream
-      var oldTrack = stream.getVideoTracks()[0];
-      if (oldTrack) {
-        stream.removeTrack(oldTrack);
-        oldTrack.stop();
-      }
-      stream.addTrack(newVideoTrack);
-      // Update preview element
-      var preview = document.getElementById("preview");
-      preview.srcObject = null;
-      preview.srcObject = stream;
-      preview.className = facingMode;
-      showToast(facingMode === "user" ? "الكاميرا الأمامية" : "الكاميرا الخلفية", "info");
-    }).catch(function() {
-      showToast("تعذّر تبديل الكاميرا", "error");
-      facingMode = facingMode === "user" ? "environment" : "user"; // revert
-    });
-  } else {
-    startCamera();
-    showToast(facingMode === "user" ? "الكاميرا الأمامية" : "الكاميرا الخلفية", "info");
+    // Swapping streams mid-recording breaks MediaRecorder on mobile — queue it
+    pendingFacingSwitch = true;
+    showToast("سيتم التبديل بعد انتهاء التسجيل ✔", "info");
+    return;
   }
+  facingMode = facingMode === "user" ? "environment" : "user";
+  startCamera();
+  showToast(facingMode === "user" ? "الكاميرا الأمامية" : "الكاميرا الخلفية", "info");
 }
 
 // ── Recording ──────────────────────────────────────────────────────────────
@@ -678,7 +670,17 @@ function startRecording() {
 
   mediaRecorder.onstop = function() {
     currentBlob = new Blob(chunks, { type: currentMime });
-    // Show recorded preview and send button instead of uploading
+    isRecording = false;
+
+    // Apply any queued camera switch
+    if (pendingFacingSwitch) {
+      pendingFacingSwitch = false;
+      facingMode = facingMode === "user" ? "environment" : "user";
+      startCamera();
+      showToast(facingMode === "user" ? "الكاميرا الأمامية" : "الكاميرا الخلفية", "info");
+    }
+
+    // Show recorded preview and send button instead of uploading immediately
     var previewPlayback = document.getElementById("previewPlayback");
     previewPlayback.src = URL.createObjectURL(currentBlob);
     document.getElementById("previewRecorded").classList.add("show");
@@ -687,7 +689,6 @@ function startRecording() {
     document.getElementById("recordBtn").style.display = "block";
     document.getElementById("recordBtn").disabled = false;
     document.getElementById("stopBtn").style.display = "none";
-    isRecording = false;
     setStatus("راجع مقطعك ثم اضغط إرسال ✔");
   };
 
@@ -725,8 +726,8 @@ function stopRecording() {
   clearTimeout(countdownTimer);
   if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
   document.getElementById("ringWrap").classList.remove("active");
-  // onstop handler will show the send button
   setStatus("جارٍ المعالجة…");
+  // onstop will fire async — apply queued camera switch there via flag
 }
 
 // ── Send button (upload after review) ─────────────────────────────────────
