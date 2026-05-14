@@ -513,19 +513,8 @@ function hidePermDenied() {
 }
 
 function retryCamera() {
-  if (navigator.permissions) {
-    navigator.permissions.query({ name: "camera" }).then(function(result) {
-      if (result.state === "denied") {
-        showToast("الإذن لا يزال محجوباً — غيّره من إعدادات المتصفح ثم أعد التحميل", "error");
-      } else {
-        hidePermDenied();
-        startCamera();
-      }
-    }).catch(function() { hidePermDenied(); startCamera(); });
-  } else {
-    hidePermDenied();
-    startCamera();
-  }
+  hidePermDenied();
+  startCamera();
 }
 
 function startCamera() {
@@ -542,48 +531,28 @@ function startCamera() {
 }
 
 function doStartCamera() {
-  function doGetUserMedia() {
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: true
-    }).then(function(s) {
-      stream = s;
-      var preview = document.getElementById("preview");
-      preview.srcObject = stream;
-      preview.className = facingMode;
-      document.getElementById("noCam").style.display = "none";
-      document.getElementById("permDenied").style.display = "none";
-      setStatus("الكاميرا جاهزة");
-    }).catch(function(err) {
-      var isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
-      if (isDenied) {
-        showPermDenied();
-        setStatus("الإذن مرفوض");
-      } else {
-        setStatus("تعذّر الوصول للكاميرا");
-        showToast("تعذّر تشغيل الكاميرا: " + (err.message || err.name), "error");
-      }
-    });
-  }
-
-  if (navigator.permissions) {
-    navigator.permissions.query({ name: "camera" }).then(function(result) {
-      if (result.state === "denied") {
-        showPermDenied();
-        setStatus("الإذن مرفوض");
-        result.onchange = function() {
-          if (result.state === "granted" || result.state === "prompt") {
-            hidePermDenied();
-            startCamera();
-          }
-        };
-      } else {
-        doGetUserMedia();
-      }
-    }).catch(function() { doGetUserMedia(); });
-  } else {
-    doGetUserMedia();
-  }
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    audio: true
+  }).then(function(s) {
+    stream = s;
+    var preview = document.getElementById("preview");
+    preview.srcObject = stream;
+    preview.className = facingMode;
+    document.getElementById("noCam").style.display = "none";
+    document.getElementById("permDenied").style.display = "none";
+    setStatus("الكاميرا جاهزة");
+  }).catch(function(err) {
+    var isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+                || err.name === "SecurityError";
+    if (isDenied) {
+      showPermDenied();
+      setStatus("الإذن مرفوض");
+    } else {
+      setStatus("تعذّر الوصول للكاميرا");
+      showToast("تعذّر تشغيل الكاميرا: " + (err.message || err.name), "error");
+    }
+  });
 }
 
 // pendingFacingSwitch: queue camera flip requested during recording
