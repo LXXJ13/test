@@ -251,7 +251,44 @@ main{
 .btn-cam:active{background:var(--border2);border-color:var(--purple)}
 .btn-cam svg{width:22px;height:22px}
 
-/* tips */
+/* send button */
+.btn-send{
+  flex:1;height:58px;border:none;border-radius:18px;cursor:pointer;
+  font-family:'Tajawal',sans-serif;font-size:19px;font-weight:700;
+  background:linear-gradient(135deg,#1a6e3a,#10b981,#059669);
+  color:#fff;letter-spacing:.5px;
+  box-shadow:0 6px 28px rgba(16,185,129,.4),0 0 0 1px rgba(16,185,129,.2);
+  transition:transform .15s,box-shadow .15s,opacity .15s;position:relative;overflow:hidden;
+  display:none;
+}
+.btn-send::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);border-radius:inherit}
+.btn-send:active:not(:disabled){transform:scale(.97);box-shadow:0 2px 12px rgba(16,185,129,.3)}
+.btn-send.visible{display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* stop button overlay */
+.btn-stop{
+  flex:1;height:58px;border:none;border-radius:18px;cursor:pointer;
+  font-family:'Tajawal',sans-serif;font-size:19px;font-weight:700;
+  background:linear-gradient(135deg,#7f1d1d,var(--red),#dc2626);
+  color:#fff;letter-spacing:.5px;
+  box-shadow:0 6px 28px rgba(248,113,113,.4),0 0 0 1px rgba(248,113,113,.2);
+  transition:transform .15s,box-shadow .15s,opacity .15s;
+  display:none;
+}
+.btn-stop:active{transform:scale(.97)}
+.btn-stop.visible{display:block}
+
+/* preview playback area */
+.preview-recorded{
+  position:absolute;inset:0;display:none;z-index:5;
+  background:#000;
+}
+.preview-recorded video{width:100%;height:100%;object-fit:cover}
+.preview-recorded.show{display:block}
+
+/* name required shake */
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.name-row input.shake{animation:shake .4s ease;border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(248,113,113,.25)!important}
 .tips{
   width:100%;background:linear-gradient(135deg,var(--card),#081818);
   border:1px solid var(--border);border-radius:18px;padding:18px 20px;
@@ -337,11 +374,15 @@ main{
           <circle class="ring-track" cx="45" cy="45" r="40" fill="none" stroke-width="5"/>
           <circle class="ring-fill" id="ringFill" cx="45" cy="45" r="40" fill="none" stroke-width="5" stroke-linecap="round"/>
         </svg>
-        <div class="ring-num" id="ringNum">10</div>
+        <div class="ring-num" id="ringNum">60</div>
       </div>
       <div class="rec-dot">تسجيل</div>
     </div>
-    <div class="cam-timer" id="camTimer">الموقت 10s</div>
+    <div class="cam-timer" id="camTimer">00:00</div>
+    <!-- recorded preview -->
+    <div class="preview-recorded" id="previewRecorded">
+      <video id="previewPlayback" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover"></video>
+    </div>
     <div class="status-bar">
       <span class="status-text" id="statusText">جاهز</span>
       <span id="connStatus">يتحقق…</span>
@@ -352,18 +393,20 @@ main{
   <div class="retry-info" id="retryInfo"><span id="retryText">جارٍ إعادة المحاولة…</span></div>
 
   <div class="controls">
-    <button class="btn-record" id="recordBtn" onclick="startRecording()">⏺ تسجيل ١٠ ث</button>
-    <button class="btn-cam" title="تبديل الكاميرا" onclick="switchCamera()">
+    <button class="btn-record" id="recordBtn" onclick="startRecording()">⏺ تسجيل — دقيقة</button>
+    <button class="btn-stop visible" id="stopBtn" onclick="stopRecording()" style="display:none">⏹ إيقاف</button>
+    <button class="btn-send" id="sendBtn" onclick="sendVideo()">✈ إرسال</button>
+    <button class="btn-cam" id="camBtn" title="تبديل الكاميرا" onclick="switchCamera()">
 <svg viewBox="0 -2.5 19 19" xmlns="http://www.w3.org/2000/svg" fill="#2c747f" stroke="#2c747f" stroke-width="0.00019"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#ffffCCCCCC" stroke-width="0.11399999999999999"></g><g id="SVGRepo_iconCarrier"> <path fill="#ffff" fill-rule="evenodd" d="M666.772466,208 C667.877035,208 668.772466,207.104569 668.772466,206 C668.772466,204.895431 667.877035,204 666.772466,204 C665.667896,204 664.772466,204.895431 664.772466,206 C664.772466,207.104569 665.667896,208 666.772466,208 Z M659.772466,200 L673.274198,200 C673.549384,200 673.772466,199.768066 673.772466,199.5 C673.772466,199.223858 673.548783,199 673.273389,199 L659.77995,199 C659.223532,199 658.772466,199.437881 658.772466,200.002929 L658.772466,206 L659.772466,206 L659.772466,200 Z M658.955839,208.620048 C659.130707,208.82989 659.421365,208.821321 659.589093,208.620048 L661.455839,206.379952 C661.630707,206.17011 661.557622,206 661.274767,206 L657.270165,206 C656.995293,206 656.921365,206.178679 657.089093,206.379952 L658.955839,208.620048 Z M672.772466,212 L659.270733,212 C658.995548,212 658.772466,212.231934 658.772466,212.5 C658.772466,212.776142 658.996148,213 659.271543,213 L672.764982,213 C673.3214,213 673.772466,212.562119 673.772466,211.997071 L673.772466,206 L672.772466,206 L672.772466,212 Z M673.607169,203.367859 C673.422318,203.164696 673.125929,203.161293 672.93826,203.367859 L670.881124,205.632141 C670.696548,205.835304 670.767524,206 671.050348,206 L675.498641,206 C675.776677,206 675.855315,205.838707 675.667367,205.632141 L673.607169,203.367859 Z" transform="translate(-657 -199)"></path> </g></svg>
     </button>
   </div>
 
   <div class="tips">
     <div class="tips-title">كيف يعمل</div>
-    <div class="tip"><div class="tip-dot"></div>أدخل اسمك حتى يعرف الجميع من أرسل المقطع</div>
-    <div class="tip"><div class="tip-dot"></div>اضغط تسجيل — يتوقف تلقائياً بعد ١٠ ثوانٍ</div>
-    <div class="tip"><div class="tip-dot"></div>يُرسَل المقطع تلقائياً، لديك حد مقطعين كل 15 دقيقة</div>
-    <div class="tip"><div class="tip-dot"></div>يتضمن المقطع صوت !</div>
+    <div class="tip"><div class="tip-dot"></div>أدخل اسمك أولاً — الاسم مطلوب قبل التسجيل</div>
+    <div class="tip"><div class="tip-dot"></div>اضغط تسجيل — يتوقف تلقائياً بعد دقيقة أو اضغط إيقاف متى شئت</div>
+    <div class="tip"><div class="tip-dot"></div>يمكنك تبديل الكاميرا أثناء التسجيل دون انقطاعه</div>
+    <div class="tip"><div class="tip-dot"></div>راجع مقطعك ثم اضغط إرسال عندما تكون مستعداً</div>
   </div>
 </main>
 
@@ -408,8 +451,8 @@ var UPLOAD_TOKEN = "sjdhf34Da2";
 // =========================================================
 
 // ── Fixed settings ─────────────────────────────────────────────────────────
-var VIDEO_BITRATE = 2000000; // 1.5 Mbps — عالية دائماً
-var MAX_DURATION = 10;       // 10 ثوانٍ دائماً
+var VIDEO_BITRATE = 2000000; // 2 Mbps — عالية دائماً
+var MAX_DURATION = 60;       // 60 ثانية (دقيقة واحدة)
 var CIRCUMFERENCE = 2 * Math.PI * 40;
 
 var stream = null;
@@ -534,8 +577,36 @@ function startCamera() {
 
 function switchCamera() {
   facingMode = facingMode === "user" ? "environment" : "user";
-  startCamera();
-  showToast(facingMode === "user" ? "الكاميرا الأمامية" : "الكاميرا الخلفية", "info");
+  
+  if (isRecording) {
+    // Switch camera without stopping recording — replace video track in place
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    }).then(function(newStream) {
+      var newVideoTrack = newStream.getVideoTracks()[0];
+      if (!newVideoTrack) return;
+      // Replace track in the existing stream
+      var oldTrack = stream.getVideoTracks()[0];
+      if (oldTrack) {
+        stream.removeTrack(oldTrack);
+        oldTrack.stop();
+      }
+      stream.addTrack(newVideoTrack);
+      // Update preview element
+      var preview = document.getElementById("preview");
+      preview.srcObject = null;
+      preview.srcObject = stream;
+      preview.className = facingMode;
+      showToast(facingMode === "user" ? "الكاميرا الأمامية" : "الكاميرا الخلفية", "info");
+    }).catch(function() {
+      showToast("تعذّر تبديل الكاميرا", "error");
+      facingMode = facingMode === "user" ? "environment" : "user"; // revert
+    });
+  } else {
+    startCamera();
+    showToast(facingMode === "user" ? "الكاميرا الأمامية" : "الكاميرا الخلفية", "info");
+  }
 }
 
 // ── Recording ──────────────────────────────────────────────────────────────
@@ -554,15 +625,35 @@ function getBestMime() {
 
 function startRecording() {
   if (isRecording) return;
+
+  // ── Name validation ────────────────────────────────────────────────────
+  var nameInput = document.getElementById("senderName");
+  var name = nameInput.value.trim();
+  if (!name) {
+    nameInput.classList.remove("shake");
+    void nameInput.offsetWidth; // reflow to restart animation
+    nameInput.classList.add("shake");
+    nameInput.focus();
+    showToast("الاسم مطلوب قبل التسجيل!", "error");
+    setTimeout(function() { nameInput.classList.remove("shake"); }, 500);
+    return;
+  }
+
   if (!stream) {
     startCamera();
     showToast("جارٍ تشغيل الكاميرا، حاول مجدداً", "error");
     return;
   }
 
-  var name = document.getElementById("senderName").value.trim() || "مجهول";
   localStorage.setItem("vidstream_name", name);
   currentSender = name;
+
+  // Hide preview if shown, show live camera
+  document.getElementById("previewRecorded").classList.remove("show");
+  document.getElementById("sendBtn").classList.remove("visible");
+  document.getElementById("sendBtn").style.display = "none";
+  document.getElementById("recordBtn").style.display = "none";
+  document.getElementById("stopBtn").style.display = "block";
 
   isRecording = true;
   uploadRetries = 0;
@@ -587,15 +678,22 @@ function startRecording() {
 
   mediaRecorder.onstop = function() {
     currentBlob = new Blob(chunks, { type: currentMime });
-    uploadVideo();
+    // Show recorded preview and send button instead of uploading
+    var previewPlayback = document.getElementById("previewPlayback");
+    previewPlayback.src = URL.createObjectURL(currentBlob);
+    document.getElementById("previewRecorded").classList.add("show");
+    document.getElementById("sendBtn").style.display = "flex";
+    document.getElementById("sendBtn").classList.add("visible");
+    document.getElementById("recordBtn").style.display = "block";
+    document.getElementById("recordBtn").disabled = false;
+    document.getElementById("stopBtn").style.display = "none";
+    isRecording = false;
+    setStatus("راجع مقطعك ثم اضغط إرسال ✔");
   };
 
   // Collect every 500ms for smoother data
   mediaRecorder.start(500);
 
-  var btn = document.getElementById("recordBtn");
-  btn.disabled = true;
-  btn.textContent = "جارٍ التسجيل…";
   document.getElementById("ringWrap").classList.add("active");
   startCountdown();
 }
@@ -604,13 +702,18 @@ function startCountdown() {
   var remaining = MAX_DURATION;
   var numEl = document.getElementById("ringNum");
   var fillEl = document.getElementById("ringFill");
+  var timerEl = document.getElementById("camTimer");
   fillEl.style.strokeDashoffset = 0;
 
   function tick() {
-    numEl.textContent = remaining;
+    var mins = Math.floor(remaining / 60);
+    var secs = remaining % 60;
+    var display = String(mins).padStart(2,"0") + ":" + String(secs).padStart(2,"0");
+    numEl.textContent = remaining <= 9 ? remaining : display;
+    timerEl.textContent = display;
     var progress = (MAX_DURATION - remaining) / MAX_DURATION;
     fillEl.style.strokeDashoffset = CIRCUMFERENCE * progress;
-    setStatus("جارٍ التسجيل… " + remaining + " ث");
+    setStatus("جارٍ التسجيل… " + display);
     if (remaining <= 0) { stopRecording(); return; }
     remaining--;
     countdownTimer = setTimeout(tick, 1000);
@@ -622,8 +725,18 @@ function stopRecording() {
   clearTimeout(countdownTimer);
   if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
   document.getElementById("ringWrap").classList.remove("active");
-  document.getElementById("recordBtn").textContent = "جارٍ الرفع…";
+  // onstop handler will show the send button
+  setStatus("جارٍ المعالجة…");
+}
+
+// ── Send button (upload after review) ─────────────────────────────────────
+function sendVideo() {
+  if (!currentBlob) return;
+  document.getElementById("sendBtn").style.display = "none";
+  document.getElementById("sendBtn").classList.remove("visible");
+  document.getElementById("previewRecorded").classList.remove("show");
   setStatus("جارٍ الإرسال…");
+  uploadVideo();
 }
 
 // ── Upload with retry ──────────────────────────────────────────────────────
@@ -666,7 +779,6 @@ xhr.open("POST", SERVER_URL + "/upload?name=" + encodeURIComponent(currentSender
     fill.style.width = "0%";
     retryInfo.classList.remove("show");
 
-    isRecording = false;
     resetRecordBtn();
 
     if (xhr.status === 200) {
@@ -714,7 +826,6 @@ xhr.open("POST", SERVER_URL + "/upload?name=" + encodeURIComponent(currentSender
       bar.classList.remove("active", "retry");
       fill.style.width = "0%";
       retryInfo.classList.remove("show");
-      isRecording = false;
       resetRecordBtn();
       setStatus("فشل الإرسال");
       showToast("تعذّر الإرسال — تحقق من الاتصال", "error");
@@ -726,7 +837,9 @@ xhr.open("POST", SERVER_URL + "/upload?name=" + encodeURIComponent(currentSender
 
 function resetRecordBtn() {
   var btn = document.getElementById("recordBtn");
-  btn.textContent = "⏺ تسجيل ١٠ ث";
+  btn.textContent = "⏺ تسجيل — دقيقة";
+  btn.style.display = "block";
+  document.getElementById("stopBtn").style.display = "none";
   if (!limitActive) btn.disabled = false;
 }
 
