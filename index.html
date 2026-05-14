@@ -287,6 +287,19 @@ main{
 @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
 .name-row input.shake{animation:shake .4s ease;border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(248,113,113,.25)!important}
 
+
+/* delete button */
+.btn-delete{
+  width:58px;height:58px;flex-shrink:0;
+  border:1.5px solid rgba(248,113,113,.4);border-radius:18px;cursor:pointer;
+  background:linear-gradient(135deg,rgba(127,29,29,.6),rgba(220,38,38,.25));
+  color:var(--red);display:none;align-items:center;justify-content:center;
+  transition:background .2s,border-color .2s;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+  font-size:22px;
+}
+.btn-delete:active{background:rgba(220,38,38,.5);border-color:var(--red)}
+
 /* tips */
 .tips{
   width:100%;background:linear-gradient(135deg,var(--card),#081818);
@@ -395,6 +408,7 @@ main{
     <button class="btn-record" id="recordBtn" onclick="startRecording()">⏺ تسجيل — دقيقة</button>
     <button class="btn-stop" id="stopBtn" onclick="stopRecording()">⏹ إيقاف</button>
     <button class="btn-send" id="sendBtn" onclick="sendVideo()">✈ إرسال</button>
+    <button class="btn-delete" id="deleteBtn" onclick="deleteVideo()" title="حذف المقطع">🗑</button>
     <button class="btn-cam" title="تبديل الكاميرا" onclick="switchCamera()">
 <svg viewBox="0 -2.5 19 19" xmlns="http://www.w3.org/2000/svg" fill="#2c747f" stroke="#2c747f" stroke-width="0.00019"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#ffffCCCCCC" stroke-width="0.11399999999999999"></g><g id="SVGRepo_iconCarrier"> <path fill="#ffff" fill-rule="evenodd" d="M666.772466,208 C667.877035,208 668.772466,207.104569 668.772466,206 C668.772466,204.895431 667.877035,204 666.772466,204 C665.667896,204 664.772466,204.895431 664.772466,206 C664.772466,207.104569 665.667896,208 666.772466,208 Z M659.772466,200 L673.274198,200 C673.549384,200 673.772466,199.768066 673.772466,199.5 C673.772466,199.223858 673.548783,199 673.273389,199 L659.77995,199 C659.223532,199 658.772466,199.437881 658.772466,200.002929 L658.772466,206 L659.772466,206 L659.772466,200 Z M658.955839,208.620048 C659.130707,208.82989 659.421365,208.821321 659.589093,208.620048 L661.455839,206.379952 C661.630707,206.17011 661.557622,206 661.274767,206 L657.270165,206 C656.995293,206 656.921365,206.178679 657.089093,206.379952 L658.955839,208.620048 Z M672.772466,212 L659.270733,212 C658.995548,212 658.772466,212.231934 658.772466,212.5 C658.772466,212.776142 658.996148,213 659.271543,213 L672.764982,213 C673.3214,213 673.772466,212.562119 673.772466,211.997071 L673.772466,206 L672.772466,206 L672.772466,212 Z M673.607169,203.367859 C673.422318,203.164696 673.125929,203.161293 672.93826,203.367859 L670.881124,205.632141 C670.696548,205.835304 670.767524,206 671.050348,206 L675.498641,206 C675.776677,206 675.855315,205.838707 675.667367,205.632141 L673.607169,203.367859 Z" transform="translate(-657 -199)"></path> </g></svg>
     </button>
@@ -532,7 +546,7 @@ function startCamera() {
 
   function doGetUserMedia() {
     navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      video: { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: true
     }).then(function(s) {
       stream = s;
@@ -626,6 +640,7 @@ function startRecording() {
   // Hide recorded preview if shown, reset send button
   document.getElementById("previewRecorded").classList.remove("show");
   document.getElementById("sendBtn").style.display = "none";
+  document.getElementById("deleteBtn").style.display = "none";
   document.getElementById("recordBtn").style.display = "none";
   document.getElementById("stopBtn").style.display = "block";
 
@@ -658,10 +673,11 @@ function startRecording() {
     pb.src = URL.createObjectURL(currentBlob);
     document.getElementById("previewRecorded").classList.add("show");
     document.getElementById("sendBtn").style.display = "flex";
+    document.getElementById("deleteBtn").style.display = "flex";
     document.getElementById("recordBtn").style.display = "block";
     document.getElementById("recordBtn").disabled = false;
     document.getElementById("stopBtn").style.display = "none";
-    setStatus("راجع مقطعك ثم اضغط إرسال ✔");
+    setStatus("راجع مقطعك — إرسال أو حذف ✔");
   };
 
   // Collect every 500ms for smoother data
@@ -702,9 +718,24 @@ function stopRecording() {
 function sendVideo() {
   if (!currentBlob) return;
   document.getElementById("sendBtn").style.display = "none";
+  document.getElementById("deleteBtn").style.display = "none";
   document.getElementById("previewRecorded").classList.remove("show");
   setStatus("جارٍ الإرسال…");
   uploadVideo();
+}
+
+function deleteVideo() {
+  if (!currentBlob) return;
+  currentBlob = null;
+  // Revoke preview URL
+  var pb = document.getElementById("previewPlayback");
+  if (pb.src) { URL.revokeObjectURL(pb.src); pb.src = ""; }
+  // Hide preview and action buttons
+  document.getElementById("previewRecorded").classList.remove("show");
+  document.getElementById("sendBtn").style.display = "none";
+  document.getElementById("deleteBtn").style.display = "none";
+  setStatus("الكاميرا جاهزة");
+  showToast("تم حذف المقطع", "info");
 }
 
 // ── Upload with retry ──────────────────────────────────────────────────────
